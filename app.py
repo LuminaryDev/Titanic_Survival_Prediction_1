@@ -1,35 +1,53 @@
-import streamlit as st
 import joblib
 import pandas as pd
+import streamlit as st
+from sklearn.preprocessing import LabelEncoder
 
-# Load model
-model = joblib.load("titanic_xgb_model.pkl")
+# Load the trained model
+model = joblib.load('titanic_xgb_model.pkl')
 
-st.title("🚢 Titanic Survival Prediction")
+# UI elements for user input
+st.title("Titanic Survival Prediction")
 
-# Collect user inputs
-Pclass = st.selectbox("Passenger Class (Pclass)", [1, 2, 3])
-Sex = st.selectbox("Sex", ["male", "female"])
-Age = st.slider("Age", 0, 100, 25)
-SibSp = st.number_input("Siblings/Spouses Aboard (SibSp)", 0, 10, 0)
-Parch = st.number_input("Parents/Children Aboard (Parch)", 0, 10, 0)
-Fare = st.slider("Fare", 0.0, 500.0, 32.0)
-Embarked = st.selectbox("Port of Embarkation", ["C", "Q", "S"])
+age = st.number_input("Age", min_value=0, max_value=100, value=30)
+fare = st.number_input("Fare", min_value=0, max_value=500, value=50)
+pclass = st.selectbox("Pclass", [1, 2, 3])
+sex = st.selectbox("Sex", ['male', 'female'])
+sibsp = st.number_input("SibSp", min_value=0, max_value=10, value=0)
+parch = st.number_input("Parch", min_value=0, max_value=10, value=0)
+embarked = st.selectbox("Embarked", ['S', 'C', 'Q'])
 
-# Convert categorical values
-sex_map = {'male': 0, 'female': 1}
-embarked_map = {'C': 0, 'Q': 1, 'S': 2}
+# Feature engineering for the new input
+family_size = sibsp + parch
+title = "Mr" if sex == 'male' else "Mrs"  # Simple assumption, you can add logic for other titles
 
-input_df = pd.DataFrame({
-    'Pclass': [Pclass],
-    'Sex': [sex_map[Sex]],
-    'Age': [Age],
-    'SibSp': [SibSp],
-    'Parch': [Parch],
-    'Fare': [Fare],
-    'Embarked': [embarked_map[Embarked]]
-})
+# Manually adding encoded features (replace with your full encoding logic)
+data = {
+    'Pclass': pclass,
+    'Sex': sex,
+    'Age': age,
+    'SibSp': sibsp,
+    'Parch': parch,
+    'Fare': fare,
+    'Embarked_S': 1 if embarked == 'S' else 0,  # One-hot encoding for Embarked
+    'Embarked_C': 1 if embarked == 'C' else 0,
+    'Embarked_Q': 1 if embarked == 'Q' else 0,
+    'FamilySize': family_size,
+    'Title_Mr': 1 if title == 'Mr' else 0,
+    'Title_Mrs': 1 if title == 'Mrs' else 0,
+    'Title_Miss': 1 if title == 'Miss' else 0,
+    'Title_Rare': 0,  # Assuming no rare titles for this input
+    'HasCabin': 0  # Assuming no cabin information (you may change based on input)
+}
 
-if st.button("Predict"):
-    prediction = model.predict(input_df)[0]
-    st.success("✅ Survived!" if prediction == 1 else "❌ Did not survive")
+# Convert the data into a DataFrame
+input_df = pd.DataFrame([data])
+
+# Make prediction
+prediction = model.predict(input_df)
+
+# Display the result
+if prediction == 1:
+    st.write("The model predicts that this passenger survived.")
+else:
+    st.write("The model predicts that this passenger did not survive.")
